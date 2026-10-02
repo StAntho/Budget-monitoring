@@ -2,3 +2,6 @@ dotenv
 fastapi
 streamlit
 uvicorn==0.34.2
+httpx
+docling-parse
+docling
