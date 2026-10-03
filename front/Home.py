@@ -1,6 +1,7 @@
 import streamlit as st
 from dotenv import load_dotenv
 import os, httpx
+import pandas as pd
 
 st.set_page_config(
     page_title="Budget monitoring",
@@ -18,7 +19,7 @@ st.markdown("#### Choose a file or folder")
 choice_type = st.radio(
     "What's type of download",
     ("Files", "Directory"),
-    index=None,
+    index=0,
     horizontal=True
 )
 
@@ -48,7 +49,19 @@ if uploaded_files:
     response = httpx.post(
         f"{API_URL}extract_doc/extract",
         files=files,
-        timeout=160.0
+        timeout=600.0
     )
 
     st.write(response)
+    response.raise_for_status()
+    
+    data = response.json()
+    df = pd.DataFrame(data["final_df"])
+
+    df = df.fillna("")
+
+    st.dataframe(
+        df,
+        width="stretch",
+        hide_index=True,
+    )

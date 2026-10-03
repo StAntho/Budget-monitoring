@@ -5,6 +5,10 @@ from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling.datamodel.base_models import DocumentStream
 from io import BytesIO
+import pandas as pd
+from io import StringIO
+from utils.manage_markdown import markdown_table_to_df
+
 
 async def convert_pdf_to_docling(
         pdf_file: UploadFile,
@@ -80,8 +84,25 @@ def extract_tables_with_context(markdown_text: str):
 
 def save_tables(markdow_text, tables_dir):
     tables = extract_tables_with_context(markdow_text)
+    dataframe = []
 
     for table_content, table_name, page_num in tables:
         content_with_page = f"**Page:** {page_num}\n\n{table_content}"
 
+        df = markdown_table_to_df(table_content)
+
+        if df.empty:
+            continue
+
+        df["page"] = page_num
+        dataframe.append(df)
+
         (tables_dir/f"{table_name}_page_{page_num}.md").write_text(content_with_page, encoding ='utf-8')
+
+    if dataframe:
+        return pd.concat(
+            dataframe,
+            ignore_index=True
+        )
+
+    return pd.DataFrame()

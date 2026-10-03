@@ -17,6 +17,7 @@ class ExtracterService:
 
     async def extract(self, files: list[UploadFile]) -> dict:
         results = []
+        all_dataframes = []
 
         for pdf_file in files:
             print(pdf_file.filename)
@@ -36,10 +37,15 @@ class ExtracterService:
                     encoding="utf-8",
                 )
 
-                save_tables(
+                df = save_tables(
                     markdown_text,
                     self.EXTRACTED_DIR,
                 )
+
+                if not df.empty:
+                    df["filename"] = pdf_file.filename
+
+                    all_dataframes.append(df)
 
                 results.append({
                     "filename": pdf_file.filename,
@@ -55,4 +61,12 @@ class ExtracterService:
                     "message": str(e),
                 })
             
-        return results
+        if all_dataframes:
+            final_df = pd.concat(
+                all_dataframes,
+                ignore_index=True
+            )
+        else:
+            final_df = pd.DataFrame()
+
+        return results, final_df
