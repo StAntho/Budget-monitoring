@@ -38,6 +38,7 @@ class ExtracterService:
                 )
 
                 df = save_tables(
+                    filename,
                     markdown_text,
                     self.EXTRACTED_DIR,
                 )

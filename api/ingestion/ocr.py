@@ -82,9 +82,12 @@ def extract_tables_with_context(markdown_text: str):
     return tables
 
 
-def save_tables(markdow_text, tables_dir):
+def save_tables(filename: str, markdow_text, tables_dir):
     tables = extract_tables_with_context(markdow_text)
     dataframe = []
+
+    output_dir = tables_dir / filename
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     for table_content, table_name, page_num in tables:
         content_with_page = f"**Page:** {page_num}\n\n{table_content}"
@@ -97,7 +100,7 @@ def save_tables(markdow_text, tables_dir):
         df["page"] = page_num
         dataframe.append(df)
 
-        (tables_dir/f"{table_name}_page_{page_num}.md").write_text(content_with_page, encoding ='utf-8')
+        (output_dir /f"{table_name}_page_{page_num}.md").write_text(content_with_page, encoding ='utf-8')
 
     if dataframe:
         return pd.concat(
