@@ -39,13 +39,32 @@ if uploaded_file:
             st.success("Fichier chargé avec succès")
             st.dataframe(df)
 
-            dataset = []
-            for i, (_, row) in enumerate(df.iterrows()):
-                row_dict = {}
-                for col in df.columns:
-                    row_dict[col] = row.get(col)
-                dataset.append(row_dict)
-            # dataset = df.to_dict(orient="records")
-            st.write(dataset)
+            if st.button("Envoyer"):
+                df = df.where(df.notna(), None)
+                df = df.fillna("")
+                payload = {
+                    "data": df.to_dict(orient="records")
+                }
+
+                response = httpx.post(
+                    f"{API_URL}import_doc/process",
+                    json=payload,
+                    timeout=30.0,
+                )
+
+                if response.status_code == 422:
+                    st.error("Erreur de validation API")
+                    st.json(response.json())
+                    st.stop()
+
+                if response.status_code >= 400:
+                    st.error(f"API error {response.status_code}")
+                    st.code(response.text)
+                    st.stop()
+
+                response.raise_for_status()
+
+                result = response.json()
+                st.write(result)
 
 st.markdown("---")
