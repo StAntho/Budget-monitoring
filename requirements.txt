@@ -5,3 +5,8 @@ uvicorn==0.34.2
 httpx
 docling-parse
 docling
+langchain_core
+langchain_text_splitters
+sentence-transformers
+langchain_huggingface
+langchain_qdrant
