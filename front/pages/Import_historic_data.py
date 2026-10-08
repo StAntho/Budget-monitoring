@@ -68,3 +68,42 @@ if uploaded_file:
                 st.write(result)
 
 st.markdown("---")
+
+collections = httpx.get(
+    f"{API_URL}import_doc/get_datas_vs",
+    timeout=30.0,
+)
+collections = collections.json()
+collections = [c["name"] for c in collections["collections"]]
+
+
+st.markdown("#### Search for document")
+collection = st.selectbox("Selectionner la collection", options=collections)
+query = st.text_input("Chercher un doc dans la base vectorielle")
+
+if query is not None and st.button("Envoyer"):
+    payload = {
+        "collection": collection,
+        "query": query
+    }
+    retrieves = httpx.post(
+        f"{API_URL}import_doc/request_vs",
+        json=payload,
+        timeout=30.0,
+    )
+
+    if retrieves.status_code != 200:
+        st.error(
+            f"Erreur API {retrieves.status_code}: "
+            f"{retrieves.text}"
+        )
+        st.stop()
+
+    st.write(retrieves)
+
+    # st.write(result_retrieve)
+    retrieves.raise_for_status()
+
+    # result_retreive = retrieves.json()
+    st.write(retrieves.status_code)
+    st.write(retrieves.text)

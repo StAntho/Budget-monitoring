@@ -29,28 +29,35 @@ class Qdrant_vs():
     
         
     def get_vectorstore(
-        collection: str,
-        db_path: str,     
+        self,
+        collection: str,  
     ):
         embedder = embedding(EMBEDDING_MODEL_NAME_ST)
-        qdrant = QdrantVectorStore.from_existing_collection(
-            embedding=embedder,
+        return QdrantVectorStore(
+            client=self.client,
             collection_name=collection,
-            path=db_path,
+            embedding=embedder,
         )
-
-        return qdrant
 
     def get_collections(self):
         collections = self.client.get_collections()
         return collections
     
     def add_documents(
+        self,
         vector_store,
         token_split_texts
     ):
         try:
             vector_store.add_documents(token_split_texts)
-            response = {"code": 200, "message": "Ajout de documents réussi"}
+            return {
+                "code": 200,
+                "message": "Ajout de documents réussi",
+            }
         except Exception as e:
-            return f"L'ajout de document a échoué - Erreur: {e}" 
+            return {
+                "code": 500,
+                "message": (
+                    f"L'ajout de document a échoué - Erreur: {e}"
+                ),
+            } 

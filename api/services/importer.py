@@ -14,9 +14,10 @@ EMBEDDING_MODEL_NAME_ST = os.getenv('ST_EMBEDDING_MODEL')
 class ImporterService:
 
     def __init__(
-        self
+        self,
+        qdrant: Qdrant_vs
     ):
-        self
+        self.qdrant = qdrant
 
     def process(self, payload):
 
@@ -24,16 +25,20 @@ class ImporterService:
         print("✅ Tous les documents sont bien créés")
         chunks = chunk_for_doc(docs)
         print("✅ Chunks fait")
-        embedder = embedding(EMBEDDING_MODEL_NAME_ST)
-        qdrant = Qdrant_vs(
-            client_path=Path("./langchain_qdrant")
-        )
 
-        vectorstore = qdrant.create_vectorestore(
+        vectorstore = self.qdrant.create_vectorestore(
             collection_name="test_embedding"
         )
-        add_docs = Qdrant_vs.add_documents(vectorstore, chunks)
-
-
+        add_docs = self.qdrant.add_documents(vectorstore, chunks)
 
         return chunks
+    
+
+    def get_datas(self):
+        collections = self.qdrant.get_collections()
+        return collections
+
+    def request_vs(self, payload):
+        vector_store = self.qdrant.get_vectorstore(payload['collection'])
+        retrieves = vector_store.similarity_search(payload['query'], k=2)
+        return retrieves
