@@ -16,14 +16,25 @@ class Qdrant_vs():
         client_path:Path
     ):
         self.client = QdrantClient(path=client_path, prefer_grpc=False)
+        self.embeddings = embedding(EMBEDDING_MODEL_NAME_ST)
 
     def create_vectorestore(
         self,
         collection_name:str
     ):
-        vectorstore = self.client.create_collection(
+        if not self.client.collection_exists(collection_name):
+            self.client.create_collection(
+                collection_name=collection_name,
+                vectors_config=VectorParams(
+                    size=768,
+                    distance=Distance.COSINE
+                ),
+            )
+
+        vectorstore = QdrantVectorStore(
+            client=self.client,
             collection_name=collection_name,
-            vectors_config=VectorParams(size=768, distance=Distance.COSINE),
+            embedding=self.embeddings,
         )
         return vectorstore
     
@@ -32,11 +43,10 @@ class Qdrant_vs():
         self,
         collection: str,  
     ):
-        embedder = embedding(EMBEDDING_MODEL_NAME_ST)
         return QdrantVectorStore(
             client=self.client,
             collection_name=collection,
-            embedding=embedder,
+            embedding=self.embeddings,
         )
 
     def get_collections(self):
@@ -49,6 +59,11 @@ class Qdrant_vs():
         token_split_texts
     ):
         try:
+            if not hasattr(vector_store, "add_documents"):
+                raise TypeError(
+                    f"vector_store doit posséder une méthode add_documents(), "
+                    f"mais son type est {type(vector_store).__name__}"
+                )
             vector_store.add_documents(token_split_texts)
             return {
                 "code": 200,

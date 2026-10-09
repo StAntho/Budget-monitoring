@@ -81,7 +81,7 @@ st.markdown("#### Search for document")
 collection = st.selectbox("Selectionner la collection", options=collections)
 query = st.text_input("Chercher un doc dans la base vectorielle")
 
-if query is not None and st.button("Envoyer"):
+if query is not None and st.button("Rechercher"):
     payload = {
         "collection": collection,
         "query": query

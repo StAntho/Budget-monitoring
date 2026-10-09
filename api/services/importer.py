@@ -20,18 +20,22 @@ class ImporterService:
         self.qdrant = qdrant
 
     def process(self, payload):
-
         docs = json_to_docs(payload)
         print("✅ Tous les documents sont bien créés")
+
         chunks = chunk_for_doc(docs)
         print("✅ Chunks fait")
 
         vectorstore = self.qdrant.create_vectorestore(
             collection_name="test_embedding"
         )
-        add_docs = self.qdrant.add_documents(vectorstore, chunks)
 
-        return chunks
+        add_docs = self.qdrant.add_documents(
+            vectorstore,
+            chunks
+        )
+
+        return add_docs
     
 
     def get_datas(self):

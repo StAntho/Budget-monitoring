@@ -2,8 +2,11 @@ from pathlib import Path
 from core.vector_store import Qdrant_vs
 
 
+BASE_DIR = Path(__file__).resolve().parent
+CLIENT_PATH = BASE_DIR / "langchain_qdrant2"
+
 qdrant = Qdrant_vs(
-    client_path=Path("./langchain_qdrant")
+    client_path=CLIENT_PATH
 )
 
 
