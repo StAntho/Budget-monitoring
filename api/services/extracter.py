@@ -2,6 +2,7 @@ from pathlib import Path
 from ingestion.ocr import *
 from fastapi import UploadFile
 from docling.document_converter import DocumentConverter
+from services.importer import ImporterService
 
 class ExtracterService:
     EXTRACTED_DIR = Path("extractions")
@@ -9,11 +10,13 @@ class ExtracterService:
 
     def __init__(
         self,
-        converter:DocumentConverter
+        converter:DocumentConverter,
+        qdrant=None
     ):
         self.converter = converter
         self.EXTRACTED_DIR.mkdir(exist_ok=True),
-        self.OUTPUT_MD_DIR.mkdir(exist_ok=True)
+        self.OUTPUT_MD_DIR.mkdir(exist_ok=True),
+        self.qdrant = qdrant
 
     async def extract(self, files: list[UploadFile]) -> dict:
         results = []
@@ -69,5 +72,13 @@ class ExtracterService:
             )
         else:
             final_df = pd.DataFrame()
+
+        service = ImporterService(self.qdrant)
+        final_df["Sous-catégorie"] = final_df.apply(
+            lambda row: service.request_vs_r1(
+                payload={"query": row.iloc[2], "collection": "test_embedding"}
+            ),
+            axis=1,
+        )
 
         return results, final_df

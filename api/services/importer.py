@@ -46,3 +46,14 @@ class ImporterService:
         vector_store = self.qdrant.get_vectorstore(payload['collection'])
         retrieves = vector_store.similarity_search(payload['query'], k=2)
         return retrieves
+
+    def request_vs_r1(self, payload):
+        query = payload.get("query")
+        if not isinstance(query, str) or not query.strip():
+            return None
+        vector_store = self.qdrant.get_vectorstore(payload['collection'])
+        retrieves = vector_store.similarity_search(payload['query'], k=1)
+        
+        for r in retrieves:
+            return r.metadata['sous_cat']
+        return None
