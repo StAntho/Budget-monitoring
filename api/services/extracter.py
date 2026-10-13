@@ -74,11 +74,24 @@ class ExtracterService:
             final_df = pd.DataFrame()
 
         service = ImporterService(self.qdrant)
-        final_df["Sous-catégorie"] = final_df.apply(
+        result = final_df.apply(
             lambda row: service.request_vs_r1(
                 payload={"query": row.iloc[2], "collection": "test_embedding"}
             ),
             axis=1,
         )
+
+        result = result.apply(
+            lambda x: x if isinstance(x, dict) else {
+                "sous_cat": None,
+                "categorie": None,
+                "sub_cat": None,
+            }
+        )
+
+        final_df[["Sous-catégorie", "categorie", "Sub-categorie"]] = pd.DataFrame(
+            result.tolist(),
+            index=final_df.index
+        )[["sous_cat", "categorie", "sub_cat"]].values
 
         return results, final_df

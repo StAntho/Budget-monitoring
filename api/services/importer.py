@@ -55,5 +55,13 @@ class ImporterService:
         retrieves = vector_store.similarity_search(payload['query'], k=1)
         
         for r in retrieves:
-            return r.metadata['sous_cat']
-        return None
+            return {
+                "sous_cat": r.metadata['sous_cat'],
+                "categorie": r.metadata['categorie'],
+                "sub_cat": r.metadata['sub_cat'],
+            }
+        return {
+            "sous_cat": None,
+            "categorie": None,
+            "sub_cat": None,
+        }
