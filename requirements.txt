@@ -10,3 +10,4 @@ langchain_text_splitters
 sentence-transformers
 langchain_huggingface
 langchain_qdrant
+pymupdf
