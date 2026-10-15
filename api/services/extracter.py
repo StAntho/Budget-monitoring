@@ -4,6 +4,8 @@ from fastapi import UploadFile
 from docling.document_converter import DocumentConverter
 from services.importer import ImporterService
 import fitz, re
+from parsers.banks.current_bank import CurrentBankParser
+import polars as pl
 
 class ExtracterService:
     EXTRACTED_DIR = Path("extractions")
@@ -98,59 +100,128 @@ class ExtracterService:
         return results, final_df
 
 
-    async def fitz_extract_per_object(self, files: list[UploadFile]) -> dict:
+    async def fitz_extract_per_object(
+        self,
+        files: list[UploadFile],
+    ) -> dict:
+        results = []
+        parser = CurrentBankParser()
         for pdf_file in files:
             pdf_bytes = await pdf_file.read()
-            doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+            doc = fitz.open(
+                stream=pdf_bytes,
+                filetype="pdf",
+            )
 
-            page_blocks = []
-            for page_number in range(len(doc)):
-                page = doc[page_number]
-                blocks_md = []
-                table_bboxes = []
-                table_items = []
-                for table in page.find_tables():                                                                                                                            
-                    table_bboxes.append(table.bbox)                                                                                                                         
-                    rows = table.extract()                                                                                                                                  
-                    if not rows:
-                        continue
-                    def _cell(c):
-                        return str(c or "").strip().replace('\n', '<br>')
-                    headers = [_cell(h) for h in rows[0]]                                                                                                                   
-                    lines = [
-                        "| " + " | ".join(headers) + " |",                                                                                                                  
-                        "| " + " | ".join("---" for _ in headers) + " |",
-                    ]                                                                                                                                                       
-                    for row in rows[1:]:
-                        lines.append("| " + " | ".join(_cell(c) for c in row) + " |")                                                                                       
-                    
-                    table_items.append((table.bbox[1], "\n".join(lines)))                                                                                                   
-            
-                table_items.sort(key=lambda item: item[0])                                                                                                                    
-                blocks_md = [content for _, content in table_items]
+            try:
+                page_blocks = []
+                all_transactions = []
+                for page_number, page in enumerate(
+                    doc,
+                    start=1,
+                ):
+                    words = page.get_text("words")
+                    transactions = parser.parse_page(
+                        words=words,
+                        page_number=page_number,
+                    )
+                    all_transactions.extend(transactions)
 
-                page_blocks.append("\n\n".join(blocks_md))
+                    table_items = []
+                    for table in page.find_tables():
+                        rows = table.extract()
+                        if not rows:
+                            continue
 
-            doc.close()
+                        def _cell(value):
+                            return (
+                                str(value or "")
+                                .strip()
+                                .replace("\n", "<br>")
+                            )
 
-            full_markdown = "\n\n<!-- page break -->\n\n".join(page_blocks)
+                        headers = [
+                            _cell(header)
+                            for header in rows[0]
+                        ]
 
+                        lines = [
+                            "| " + " | ".join(headers) + " |",
+                            "| " + " | ".join(
+                                "---" for _ in headers
+                            ) + " |",
+                        ]
 
-            chunks = [full_markdown] if full_markdown.strip() else []
+                        for row in rows[1:]:
+                            lines.append(
+                                "| "
+                                + " | ".join(
+                                    _cell(value)
+                                    for value in row
+                                )
+                                + " |"
+                            )
 
-            saved = []
-            current_page = page
-            for chunk_num, content in enumerate(chunks, start=1):
+                        table_items.append(
+                            (
+                                table.bbox[1],
+                                "\n".join(lines),
+                            )
+                        )
+
+                    table_items.sort(
+                        key=lambda item: item[0]
+                    )
+
+                    blocks_md = [
+                        content
+                        for _, content in table_items
+                    ]
+
+                    page_blocks.append(
+                        "\n\n".join(blocks_md)
+                    )
+
+                full_markdown = ("\n\n<!-- page break -->\n\n").join(page_blocks)
                 start_pdf_page = 1
-                break_count    = content.count('<!-- page break -->')
-                end_pdf_page   = len(page_blocks)
-                current_page   = end_pdf_page + 1
+                end_pdf_page = len(page_blocks)
+                content = (f"<!-- pdf pages "f"{start_pdf_page}-{end_pdf_page} -->\n\n"f"{full_markdown}")
 
-                content  = f'<!-- pdf pages {start_pdf_page}-{end_pdf_page} -->\n\n' + content
-                out_path = self.OUTPUT_MD_DIR / f"{pdf_file.filename.rsplit('.', 1)[0]}_chunk_{chunk_num}_pages_{start_pdf_page}-{end_pdf_page}.md"
-                out_path.write_text(content, encoding='utf-8')
-                saved.append(out_path)
-                print(f'  Chunk {chunk_num} → {out_path.name} (pdf pages {start_pdf_page}-{end_pdf_page})')
+                out_path = (self.OUTPUT_MD_DIR / (
+                        f"{pdf_file.filename.rsplit('.', 1)[0]}"
+                        f"_chunk_1_pages_"
+                        f"{start_pdf_page}-{end_pdf_page}.md"
+                    )
+                )
 
+                out_path.write_text(
+                    content,
+                    encoding="utf-8",
+                )
 
-            return saved
+                schema = {
+                    "date": pl.String,
+                    "date_valeur": pl.String,
+                    "operation": pl.String,
+                    "debit_cents": pl.Int64,
+                    "credit_cents": pl.Int64,
+                    "source_page": pl.Int64,
+                }
+
+                final_df = pl.DataFrame(
+                    all_transactions,
+                    schema=schema,
+                    strict=False,
+                )
+                transactions_json = final_df.to_dicts()
+
+                results.append({
+                    "filename": pdf_file.filename,
+                    "markdown_path": str(out_path),
+                    "transactions": transactions_json,
+                })
+
+            finally:
+                doc.close()
+
+        return results, final_df

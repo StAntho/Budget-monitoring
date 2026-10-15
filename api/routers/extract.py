@@ -31,4 +31,9 @@ async def extract(
     qdrant: Qdrant_vs = Depends(get_qdrant),
 ) -> FileResponse:
     service = ExtracterService(converter, qdrant)
-    return await service.fitz_extract_per_object(pdf_files)
+    results, final_df = await service.fitz_extract_per_object(pdf_files)
+
+    return {
+        "results": results,
+        "final_df": final_df.to_dicts(),
+    }
