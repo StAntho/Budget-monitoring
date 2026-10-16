@@ -1,6 +1,7 @@
 import re
-from datetime import date
-from decimal import Decimal, InvalidOperation
+from parsers.generic.line_reconstructor import group_words_by_line
+from parsers.generic.date_parser import parse_dates, to_iso_date
+from parsers.generic.amount_parser import parse_amount_cents
 
 
 DATE_X = (45, 80)
@@ -9,56 +10,6 @@ OPERATION_X = (132, 400)
 DEBIT_X = (400, 470)
 CREDIT_X = (470, 556)
 
-DATE_PATTERN = re.compile(r"^\d{2}/\d{2}$")
-DATE_FULL_PATTERN = re.compile(r"^\d{2}/\d{2}/\d{4}$")
-
-AMOUNT_PATTERN = re.compile(
-    r"-?\d[\d \u00a0]*(?:,\d{2})"
-)
-
-
-def group_words_by_line(
-    words: list,
-    tolerance: float = 4.0,
-) -> list[list]:
-
-    sorted_words = sorted(
-        words,
-        key=lambda word: (word[1], word[0]),
-    )
-
-    lines = []
-
-    for word in sorted_words:
-        y0 = word[1]
-
-        if (
-            lines
-            and abs(lines[-1]["y"] - y0) <= tolerance
-        ):
-            lines[-1]["words"].append(word)
-
-            # Mettre à jour le centre vertical de la ligne
-            ys = [
-                w[1]
-                for w in lines[-1]["words"]
-            ]
-
-            lines[-1]["y"] = sum(ys) / len(ys)
-
-        else:
-            lines.append({
-                "y": y0,
-                "words": [word],
-            })
-
-    return [
-        sorted(
-            line["words"],
-            key=lambda word: word[0],
-        )
-        for line in lines
-    ]
 
 
 def get_zone_text(
@@ -81,75 +32,6 @@ def get_zone_text(
         for word in selected
     ).strip()
 
-
-def parse_amount_cents(
-    value: str,
-) -> int | None:
-
-    if not value:
-        return None
-
-    value = (
-        value
-        .replace("\u00a0", " ")
-        .replace("€", "")
-        .strip()
-    )
-
-    match = AMOUNT_PATTERN.search(value)
-
-    if not match:
-        return None
-
-    normalized = (
-        match.group()
-        .replace(" ", "")
-        .replace(",", ".")
-    )
-
-    try:
-        amount = Decimal(normalized)
-        return int(amount * 100)
-    except (InvalidOperation, ValueError):
-        return None
-
-
-def parse_dates(
-    words: list,
-) -> tuple[str | None, str | None]:
-
-    operation_date = None
-    value_date = None
-
-    for word in words:
-        text = word[4].strip()
-
-        if DATE_FULL_PATTERN.fullmatch(text):
-            value_date = text
-
-        elif DATE_PATTERN.fullmatch(text):
-            operation_date = text
-
-    return operation_date, value_date
-
-
-def to_iso_date(
-    operation_date: str | None,
-    value_date: str | None,
-) -> str | None:
-
-    if value_date:
-        parsed = date.fromisoformat(
-            f"{value_date[6:10]}-"
-            f"{value_date[3:5]}-"
-            f"{value_date[0:2]}"
-        )
-
-        return parsed.isoformat()
-
-    # Sans année connue, nous ne fabriquons pas de date.
-    # Une autre règle pourra être ajoutée ultérieurement.
-    return None
 
 
 class CurrentBankParser:
@@ -196,3 +78,4 @@ class CurrentBankParser:
             })
 
         return transactions
+
