@@ -1,5 +1,5 @@
 import re
-from datetime import date
+from datetime import date, datetime
 
 DATE_PATTERN = re.compile(r"^\d{2}/\d{2}$")
 DATE_FULL_PATTERN = re.compile(r"^\d{2}/\d{2}/\d{4}$")
@@ -12,7 +12,7 @@ def parse_dates(
     value_date = None
 
     for word in words:
-        text = word[4].strip()
+        text = word.text.strip()
 
         if DATE_FULL_PATTERN.fullmatch(text):
             value_date = text
@@ -23,18 +23,23 @@ def parse_dates(
     return operation_date, value_date
 
 
-def to_iso_date(
-    operation_date: str | None,
-    value_date: str | None,
-) -> str | None:
+def to_iso_date(value: str | None) -> str | None:
+    if not value:
+        return None
 
-    if value_date:
-        parsed = date.fromisoformat(
-            f"{value_date[6:10]}-"
-            f"{value_date[3:5]}-"
-            f"{value_date[0:2]}"
-        )
+    value = value.strip()
 
-        return parsed.isoformat()
+    for fmt in ("%d/%m/%Y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(value, fmt).date().isoformat()
+        except ValueError:
+            continue
+
+    if len(value.split("/")) == 2:
+        try:
+            datetime.strptime(value, "%d/%m")
+            return value
+        except ValueError:
+            pass
 
     return None

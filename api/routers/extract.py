@@ -30,7 +30,7 @@ async def extract(
     converter = Depends(get_document_converter),
     qdrant: Qdrant_vs = Depends(get_qdrant),
 ) -> FileResponse:
-    service = ExtracterService(converter, qdrant)
+    service = ExtracterService(converter=converter, qdrant=qdrant)
     results, final_df = await service.fitz_extract_per_object(pdf_files)
 
     return {
