@@ -1,11 +1,13 @@
-import re
+import re, os
 from parsers.generic.line_reconstructor import group_words_by_line, get_zone_text
 from parsers.generic.date_parser import parse_dates, to_iso_date
 from parsers.generic.amount_parser import parse_amount_cents
 from extraction.pdf_extractor import ExtractedDocument, ExtractedWord
 from schemas.transaction import Transaction
-from parsers.generic.bank_statement_parser import StatementParser
 from parsers.generic.column_layout import ColumnLayout
+from dotenv import load_dotenv
+
+load_dotenv()
 
 CURRENT_BANK_LAYOUT = ColumnLayout(
     date=(45, 80),
@@ -15,10 +17,17 @@ CURRENT_BANK_LAYOUT = ColumnLayout(
     credit=(470, 556),
 )
 
+CURRENT_BANK= os.getenv('CURRENT_BANK')
 
 class CurrentBankParser:
     def can_parse(self, document: ExtractedDocument) -> bool:
-        return True
+        text = " ".join(
+            word.text
+            for page in document.pages[:2]
+            for word in page.words
+        ).lower()
+
+        return CURRENT_BANK in text
 
     def parse(
         self,

@@ -3,7 +3,7 @@ from extraction.pdf_extractor import ExtractedDocument
 from schemas.transaction import Transaction
 
 
-class StatementParser(ABC):
+class BaseParser(ABC):
 
     @abstractmethod
     def can_parse(

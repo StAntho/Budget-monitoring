@@ -1,28 +1,30 @@
 from parsers.banks.current_bank import CurrentBankParser
 from extraction.pdf_extractor import ExtractedDocument
-from parsers.generic.bank_statement_parser import StatementParser
+from parsers.base import BaseParser
 
 
 class ParserRegistry:
 
     def __init__(
         self,
-        parsers: list[StatementParser] | None = None,
+        parsers: list[BaseParser] | None = None,
     ):
-        self.parsers = parsers or [
+        self.parsers = (parsers 
+        if parsers is not None
+        else [
             CurrentBankParser(),
-        ]
+        ])
 
     def register(
         self,
-        parser: StatementParser,
+        parser: BaseParser,
     ) -> None:
         self.parsers.append(parser)
 
     def select(
         self,
         document: ExtractedDocument,
-    ) -> StatementParser:
+    ) -> BaseParser:
 
         for parser in self.parsers:
             if parser.can_parse(document):
