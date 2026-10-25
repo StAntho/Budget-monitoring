@@ -12,3 +12,4 @@ langchain_huggingface
 langchain_qdrant
 pymupdf
 polars
+duckdb
