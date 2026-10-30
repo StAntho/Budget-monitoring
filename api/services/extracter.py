@@ -3,12 +3,13 @@ from ingestion.ocr import *
 from fastapi import UploadFile
 from docling.document_converter import DocumentConverter
 from services.importer import ImporterService
-import fitz, re
+import fitz, re, hashlib
 from parsers.banks.current_bank import CurrentBankParser
 import polars as pl
 from extraction.pdf_extractor import PdfExtractor
 from extraction.markdown_exporter import MarkdownExporter
 from parsers.registry import ParserRegistry
+from repositories.transactions_repository import TransactionRepository
 
 class ExtracterService:
     EXTRACTED_DIR = Path("extractions")
@@ -29,6 +30,9 @@ class ExtracterService:
         self.registry = registry or ParserRegistry()
         self.markdown_exporter = (
             markdown_exporter or MarkdownExporter()
+        )
+        self.repository = TransactionRepository(
+            Path("data/budget.duckdb")
         )
         self.qdrant = qdrant
 
@@ -122,6 +126,14 @@ class ExtracterService:
             pdf_bytes = await pdf_file.read()
             filename = pdf_file.filename or "document.pdf"
 
+            file_hash = hashlib.sha256(pdf_bytes).hexdigest()
+            if self.repository.is_imported(file_hash):
+                return {
+                    "filename": filename,
+                    "status": "already_imported",
+                    "message": "Ce fichier a déjà été importé.",
+                }
+
             document = self.extractor.extract_bytes(
                 pdf_bytes=pdf_bytes,
                 filename=filename,
@@ -209,4 +221,23 @@ class ExtracterService:
             categories_df.get_column("Sub-categorie"), 
         )
 
-        return results, final_df
+        saved = self.repository.save_import(
+            file_hash=file_hash,
+            filename=filename,
+            dataframe=final_df,
+        )
+
+        if not saved:
+            return {
+                "filename": filename,
+                "status": "already_imported",
+                "message": "Ce fichier a déjà été importé",
+            }
+
+        return {
+                "filename": filename,
+                "status": "success",
+                "transactions_count": final_df.height,
+                "result": result,
+                "final_df": final_df.to_dicts()
+            }

@@ -61,7 +61,6 @@ class TransactionRepository:
             connect.execute("BEGIN TRANSACTION")
 
             try:
-                # Enregistrement du fichier.
                 inserted = connect.execute(
                     """
                     INSERT INTO imports (file_hash, filename)
@@ -72,12 +71,10 @@ class TransactionRepository:
                     [file_hash, filename],
                 ).fetchone()
 
-                # Le fichier existe déjà.
                 if inserted is None:
                     connect.execute("ROLLBACK")
                     return False
 
-                # Ajouter les données de l'import.
                 connect.register("incoming_transactions", dataframe)
 
                 connect.execute("""
@@ -98,7 +95,7 @@ class TransactionRepository:
                     )
                     SELECT
                         file_hash,
-                        date,
+                        NULL,
                         date_valeur,
                         operation,
                         debit_cents,
@@ -129,7 +126,7 @@ class TransactionRepository:
                     )
                     SELECT
                         ?,
-                        date,
+                        NULL,
                         date_valeur,
                         operation,
                         debit_cents,
