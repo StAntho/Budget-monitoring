@@ -65,3 +65,12 @@ if uploaded_files:
         width="stretch",
         hide_index=True,
     )
+
+
+monthly_expenses = httpx.get(
+    f"{API_URL}analytics/monthly-expenses",
+    timeout=600.0
+)
+
+st.write(monthly_expenses)
+st.write(monthly_expenses.json())
