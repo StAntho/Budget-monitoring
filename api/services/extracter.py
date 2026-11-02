@@ -3,13 +3,16 @@ from ingestion.ocr import *
 from fastapi import UploadFile
 from docling.document_converter import DocumentConverter
 from services.importer import ImporterService
-import fitz, re, hashlib
+import fitz, re, hashlib, os, json
 from parsers.banks.current_bank import CurrentBankParser
 import polars as pl
 from extraction.pdf_extractor import PdfExtractor
 from extraction.markdown_exporter import MarkdownExporter
 from parsers.registry import ParserRegistry
 from repositories.transactions_repository import TransactionRepository
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class ExtracterService:
     EXTRACTED_DIR = Path("extractions")
@@ -163,6 +166,15 @@ class ExtracterService:
                 f"{start_page}-{end_page}.md"
             )
 
+
+            user1_docs = json.loads(os.getenv("USER1_ON_DOC", "[]"))
+            user2_docs = json.loads(os.getenv("USER2_ON_DOC", "[]"))
+            name= ""
+            if any(elem in filename for elem in user1_docs):
+                name = os.getenv('USER1')
+            elif any(elem in filename for elem in user2_docs):
+                name = os.getenv('USER2')
+
             out_path = self.OUTPUT_MD_DIR / output_name
 
             out_path.write_text(
@@ -218,7 +230,8 @@ class ExtracterService:
         final_df = final_df.with_columns( 
             categories_df.get_column("Sous-catégorie"), 
             categories_df.get_column("categorie"), 
-            categories_df.get_column("Sub-categorie"), 
+            categories_df.get_column("Sub-categorie"),
+            pl.lit(name).alias("who")
         )
 
         saved = self.repository.save_import(
