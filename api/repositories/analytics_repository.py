@@ -9,8 +9,10 @@ class AnalyticsRepository:
                 SELECT
                     DATE_TRUNC('month', date_valeur) AS mois,
                     categorie,
-                    SUM(COALESCE(debit_cents, 0)) / 100.0
-                        AS depenses_euros
+                    CAST(
+                        SUM(COALESCE(debit_cents, 0))
+                        AS DECIMAL(18, 2)
+                    ) / 100 AS depenses_euros
                 FROM transactions
                 GROUP BY
                     mois,
