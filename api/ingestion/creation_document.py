@@ -15,10 +15,10 @@ def json_to_docs(payload):
         sous_cat = row.get("Sous-catégorie") or row.get("Type")
         details = row.get("Détails") or row.get("Type")
         banque = row.get("Banque")
-        # finalite = row[val].get("Finalité")
+        finalite = row.get("Finalité")
         # content = f"{sub_cat} {sous_cat} {details}"
         content = f"{sub_cat} {sous_cat} {details}"
-        metadata = {"qui": qui, "revenus": revenus, "depenses": depenses, "categorie": cat, "sub_cat": sub_cat, "sous_cat": sous_cat, "details": details, "banque": banque}
+        metadata = {"qui": qui, "revenus": revenus, "depenses": depenses, "categorie": cat, "sub_cat": sub_cat, "sous_cat": sous_cat, "details": details, "banque": banque, "finalite": finalite}
         docs.append(Document(
             page_content=content,
             metadata=metadata 

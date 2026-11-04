@@ -212,14 +212,14 @@ class ExtracterService:
         result = [ service.request_vs_r1( 
             payload={ "query": query, "collection": "test_embedding", } 
             ) for query in queries ]
-
-        normalized_results = [ item if isinstance(item, dict) else { "sous_cat": None, "categorie": None, "sub_cat": None, } for item in result ]
+        normalized_results = [ item if isinstance(item, dict) else { "sous_cat": None, "categorie": None, "sub_cat": None, "finalite":None } for item in result ]
 
         categories_df = pl.DataFrame( 
             { 
                 "Sous-catégorie": [ item.get("sous_cat") for item in normalized_results ], 
                 "categorie": [ item.get("categorie") for item in normalized_results ], 
                 "Sub-categorie": [ item.get("sub_cat") for item in normalized_results ], 
+                "finalite": [ item.get("finalite") for item in normalized_results ], 
             } 
         )
 
@@ -231,6 +231,7 @@ class ExtracterService:
             categories_df.get_column("Sous-catégorie"), 
             categories_df.get_column("categorie"), 
             categories_df.get_column("Sub-categorie"),
+            categories_df.get_column("finalite"),
             pl.lit(name).alias("who")
         )
 

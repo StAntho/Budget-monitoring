@@ -34,7 +34,8 @@ class TransactionRepository:
                     status VARCHAR,
                     "Sous-catégorie" VARCHAR,
                     categorie VARCHAR,
-                    "Sub-categorie" VARCHAR
+                    "Sub-categorie" VARCHAR,
+                    who VARCHAR
                 )
             """)
 
@@ -91,7 +92,8 @@ class TransactionRepository:
                         status,
                         "Sous-catégorie",
                         categorie,
-                        "Sub-categorie"
+                        "Sub-categorie",
+                        who
                     )
                     SELECT
                         file_hash,
@@ -106,7 +108,8 @@ class TransactionRepository:
                         status,
                         "Sous-catégorie",
                         categorie,
-                        "Sub-categorie"
+                        "Sub-categorie",
+                        who
                     FROM incoming_transactions
                 """) if "file_hash" in dataframe.columns else connect.execute("""
                     INSERT INTO transactions (
@@ -122,7 +125,8 @@ class TransactionRepository:
                         status,
                         "Sous-catégorie",
                         categorie,
-                        "Sub-categorie"
+                        "Sub-categorie",
+                        who
                     )
                     SELECT
                         ?,
@@ -137,7 +141,8 @@ class TransactionRepository:
                         status,
                         "Sous-catégorie",
                         categorie,
-                        "Sub-categorie"
+                        "Sub-categorie",
+                        who
                     FROM incoming_transactions
                 """, [file_hash])
 
