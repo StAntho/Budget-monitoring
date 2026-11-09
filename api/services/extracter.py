@@ -210,7 +210,7 @@ class ExtracterService:
         service = ImporterService(self.qdrant)
         queries = final_df.to_series(2).to_list()
         result = [ service.request_vs_r1( 
-            payload={ "query": query, "collection": "test_embedding", } 
+            payload={ "query": re.sub(r'^CARTE\s+\d{2}/\d{2}\s*', '', query).strip(), "collection": "test_embedding", } 
             ) for query in queries ]
         normalized_results = [ item if isinstance(item, dict) else { "sous_cat": None, "categorie": None, "sub_cat": None, "finalite":None } for item in result ]
 
