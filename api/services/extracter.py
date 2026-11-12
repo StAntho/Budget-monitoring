@@ -235,18 +235,18 @@ class ExtracterService:
             pl.lit(name).alias("who")
         )
 
-        saved = self.repository.save_import(
-            file_hash=file_hash,
-            filename=filename,
-            dataframe=final_df,
-        )
+        # saved = self.repository.save_import(
+        #     file_hash=file_hash,
+        #     filename=filename,
+        #     dataframe=final_df,
+        # )
 
-        if not saved:
-            return {
-                "filename": filename,
-                "status": "already_imported",
-                "message": "Ce fichier a déjà été importé",
-            }
+        # if not saved:
+        #     return {
+        #         "filename": filename,
+        #         "status": "already_imported",
+        #         "message": "Ce fichier a déjà été importé",
+        #     }
 
         return {
                 "filename": filename,
@@ -255,3 +255,19 @@ class ExtracterService:
                 "result": result,
                 "final_df": final_df.to_dicts()
             }
+
+    async def validate_extract_df(
+            self,
+            payload,
+    ):
+        df = pl.DataFrame(payload.df)
+    
+        saved = self.repository.save_import(
+            file_hash=payload.file_hash,
+            filename=payload.filename,
+            dataframe=df,
+        )
+    
+        return {
+            "status": "success" if saved else "already_imported"
+        }
