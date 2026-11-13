@@ -65,15 +65,75 @@ if uploaded_files:
     response.raise_for_status()
     
     data = response.json()
+
+    if data["status"] == "already_imported":
+        st.error(f"API error {data["status"]}")
+        st.code(data["message"])
+        st.stop()
+
     df = pd.DataFrame(data["final_df"])
 
     df = df.fillna("")
 
-    st.dataframe(
-        df,
-        width="stretch",
-        hide_index=True,
-    )
+    if df is not None:
+        edited_df = st.data_editor(
+            df,
+            width='content',
+            num_rows="dynamic",
+            key="data_editor"
+        )
+
+        if st.button("Enregistrer les données"):
+            edited_df = pl.from_pandas(edited_df)
+            edited_df = edited_df.with_columns([
+                pl.col(col)
+                .cast(pl.String)
+                .str.replace_all(r"[\s\u00A0\u202F€]", "")
+                .str.replace(",", ".")
+                .cast(pl.Float64, strict=False)
+                .cast(pl.Int64, strict=False)
+                .alias(col)
+
+                for col in ["debit_cents", "credit_cents"]
+            ])
+
+            payload = {
+                "df": edited_df.to_dicts(),
+                "file_hash": data["file_hash"],
+                "filename": data["filename"]
+            }
+
+            save_df = httpx.post(
+                f"{API_URL}extract_doc/validate",
+                json=payload,
+                timeout=600.0
+            )
+
+            if save_df.status_code == 422:
+                st.error("Erreur de validation API")
+                st.json(save_df.json())
+                st.stop()
+
+            if save_df.status_code >= 400:
+                st.error(f"API error {save_df.status_code}")
+                st.code(save_df.text)
+                st.stop()
+
+            save_df.raise_for_status()
+
+            result = save_df.json()
+
+            if result["status"] == "success":
+                st.success("Transactions enregistrées avec succès !")
+
+            elif result["status"] == "already_imported":
+                st.warning("Ce fichier a déjà été importé.")
+                
+            else:
+                st.error("Une erreur est survenue pendant la sauvegarde.")
+
+            st.json(result)
+            st.write(result)
 
 
 monthly_expenses = AnalyticsRepository.get_monthly_expenses_by_category()
