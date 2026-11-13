@@ -1,5 +1,4 @@
 from pathlib import Path
-
 import duckdb
 import polars as pl
 
@@ -59,9 +58,9 @@ class TransactionRepository:
         dataframe: pl.DataFrame,
     ) -> bool:
         with duckdb.connect(str(self.database_path)) as connect:
-            connect.execute("BEGIN TRANSACTION")
-
             try:
+                connect.execute("BEGIN TRANSACTION")
+
                 inserted = connect.execute(
                     """
                     INSERT INTO imports (file_hash, filename)
@@ -76,7 +75,10 @@ class TransactionRepository:
                     connect.execute("ROLLBACK")
                     return False
 
-                connect.register("incoming_transactions", dataframe)
+                connect.register(
+                    "incoming_transactions",
+                    dataframe
+                )
 
                 connect.execute("""
                     INSERT INTO transactions (
@@ -111,42 +113,24 @@ class TransactionRepository:
                         "Sub-categorie",
                         who
                     FROM incoming_transactions
-                """) if "file_hash" in dataframe.columns else connect.execute("""
-                    INSERT INTO transactions (
-                        file_hash,
-                        date,
-                        date_valeur,
-                        operation,
-                        debit_cents,
-                        credit_cents,
-                        devise,
-                        source_page,
-                        confidence,
-                        status,
-                        "Sous-catégorie",
-                        categorie,
-                        "Sub-categorie",
-                        who
+                """)
+
+                count = connect.execute("""
+                    SELECT COUNT(*)
+                    FROM transactions
+                    WHERE file_hash = ?
+                """, [file_hash]).fetchone()[0]
+
+                print("Transactions enregistrées :", count)
+
+                if count != dataframe.height:
+                    raise ValueError(
+                        f"Nombre de transactions incorrect : "
+                        f"{count} au lieu de {dataframe.height}"
                     )
-                    SELECT
-                        ?,
-                        NULL,
-                        date_valeur,
-                        operation,
-                        debit_cents,
-                        credit_cents,
-                        devise,
-                        source_page,
-                        confidence,
-                        status,
-                        "Sous-catégorie",
-                        categorie,
-                        "Sub-categorie",
-                        who
-                    FROM incoming_transactions
-                """, [file_hash])
 
                 connect.execute("COMMIT")
+
                 return True
 
             except Exception:

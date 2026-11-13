@@ -44,7 +44,6 @@ class ExtracterService:
         all_dataframes = []
 
         for pdf_file in files:
-            print(pdf_file.filename)
             try:
                 doc_converter = await convert_pdf_to_docling(
                     pdf_file,
@@ -235,38 +234,55 @@ class ExtracterService:
             pl.lit(name).alias("who")
         )
 
-        # saved = self.repository.save_import(
-        #     file_hash=file_hash,
-        #     filename=filename,
-        #     dataframe=final_df,
-        # )
-
-        # if not saved:
-        #     return {
-        #         "filename": filename,
-        #         "status": "already_imported",
-        #         "message": "Ce fichier a déjà été importé",
-        #     }
-
         return {
                 "filename": filename,
+                "file_hash": file_hash,
                 "status": "success",
                 "transactions_count": final_df.height,
                 "result": result,
                 "final_df": final_df.to_dicts()
             }
 
+
     async def validate_extract_df(
             self,
             payload,
     ):
-        df = pl.DataFrame(payload.df)
+        df = pl.DataFrame(payload["df"])
+
+        df = df.with_columns([
+            pl.when(pl.col(col).cast(pl.String).str.strip_chars() == "")
+            .then(None)
+            .otherwise(pl.col(col))
+            .alias(col)
+            for col in df.columns
+        ])
+
+        df = df.with_columns([
+            pl.col("credit_cents").cast(pl.Int64, strict=False),
+            pl.col("debit_cents").cast(pl.Int64, strict=False),
+        ])
+
+        file_hash = str(payload["file_hash"])
+        filename = str(payload["filename"])
+
+        df = df.with_columns(
+            pl.lit(file_hash).alias("file_hash"),
+            pl.lit(filename).alias("filename")
+        )
     
         saved = self.repository.save_import(
-            file_hash=payload.file_hash,
-            filename=payload.filename,
+            file_hash=payload["file_hash"],
+            filename=payload["filename"],
             dataframe=df,
         )
+
+        if not saved:
+            return {
+                "filename": payload["filename"],
+                "status": "already_imported",
+                "message": "Ce fichier a déjà été importé",
+            }
     
         return {
             "status": "success" if saved else "already_imported"
