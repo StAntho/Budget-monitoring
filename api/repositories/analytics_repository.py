@@ -55,3 +55,25 @@ class AnalyticsRepository:
                 schema=columns,
                 orient="row"
             )
+
+
+    def get_expenses_by_person_and_category() -> pl.DataFrame:
+        with get_connection() as connect:
+
+            query = """
+                SELECT
+                    COALESCE(who, 'Non renseigné') AS personne,
+                    COALESCE(categorie, 'Non catégorisé') AS categorie,
+                    SUM(debit_cents) / 100.0 AS depenses_euros,
+                    COUNT(*) AS nombre_transactions
+                FROM transactions
+                WHERE debit_cents > 0
+                GROUP BY
+                    who,
+                    categorie
+                ORDER BY
+                    personne,
+                    depenses_euros DESC
+            """
+
+            return connect.sql(query).pl()
