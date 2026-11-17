@@ -36,34 +36,3 @@ class ImporterService:
         )
 
         return add_docs
-    
-
-    def get_datas(self):
-        collections = self.qdrant.get_collections()
-        return collections
-
-    def request_vs(self, payload):
-        vector_store = self.qdrant.get_vectorstore(payload['collection'])
-        retrieves = vector_store.similarity_search(payload['query'], k=2)
-        return retrieves
-
-    def request_vs_r1(self, payload):
-        query = payload.get("query")
-        if not isinstance(query, str) or not query.strip():
-            return None
-        vector_store = self.qdrant.get_vectorstore(payload['collection'])
-        retrieves = vector_store.similarity_search(payload['query'], k=1)
-        
-        for r in retrieves:
-            return {
-                "sous_cat": r.metadata['sous_cat'],
-                "categorie": r.metadata['categorie'],
-                "sub_cat": r.metadata['sub_cat'],
-                "finalite": r.metadata['finalite'],
-            }
-        return {
-            "sous_cat": None,
-            "categorie": None,
-            "sub_cat": None,
-            "finalite": None,
-        }

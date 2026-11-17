@@ -2,7 +2,7 @@ from pathlib import Path
 from ingestion.ocr import *
 from fastapi import UploadFile
 from docling.document_converter import DocumentConverter
-from services.importer import ImporterService
+from services.search_service import SearchService
 import fitz, re, hashlib, os, json
 from parsers.banks.current_bank import CurrentBankParser
 import polars as pl
@@ -11,6 +11,7 @@ from extraction.markdown_exporter import MarkdownExporter
 from parsers.registry import ParserRegistry
 from repositories.transactions_repository import TransactionRepository
 from dotenv import load_dotenv
+from services import search_service
 
 load_dotenv()
 
@@ -93,7 +94,7 @@ class ExtracterService:
         else:
             final_df = pd.DataFrame()
 
-        service = ImporterService(self.qdrant)
+        service = SearchService(self.qdrant)
         result = final_df.apply(
             lambda row: service.request_vs_r1(
                 payload={"query": row.iloc[2], "collection": "test_embedding"}
@@ -206,7 +207,7 @@ class ExtracterService:
             strict=False,
         )
 
-        service = ImporterService(self.qdrant)
+        service = SearchService(self.qdrant)
         queries = final_df.to_series(2).to_list()
         result = [ service.request_vs_r1( 
             payload={ "query": re.sub(r'^CARTE\s+\d{2}/\d{2}\s*', '', query).strip(), "collection": "test_embedding", } 
@@ -285,5 +286,6 @@ class ExtracterService:
             }
     
         return {
-            "status": "success" if saved else "already_imported"
+            "status": "success",
+            "validate_df": df.to_dicts()
         }

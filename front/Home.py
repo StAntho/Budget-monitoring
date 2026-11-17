@@ -61,7 +61,6 @@ if uploaded_files:
         timeout=600.0
     )
 
-    st.write(response)
     response.raise_for_status()
     
     data = response.json()
@@ -125,6 +124,7 @@ if uploaded_files:
 
             if result["status"] == "success":
                 st.success("Transactions enregistrées avec succès !")
+                st.write(result["validate_df"])
 
             elif result["status"] == "already_imported":
                 st.warning("Ce fichier a déjà été importé.")
@@ -132,49 +132,128 @@ if uploaded_files:
             else:
                 st.error("Une erreur est survenue pendant la sauvegarde.")
 
-            st.json(result)
-            st.write(result)
+
+            if result["validate_df"] is not None:
+                df = pl.DataFrame(result["validate_df"])
+                
+                monthly_expenses = (
+                    df.with_columns(
+                        pl.col("date_valeur")
+                        .str.to_date("%Y-%m-%d")
+                        .alias("date_valeur")
+                    ).with_columns(
+                        pl.col("date_valeur").dt.truncate("1mo").alias("mois")
+                    )
+                    .group_by(["mois", "categorie"])
+                    .agg(
+                        (pl.col("debit_cents").fill_null(0).sum() / 100)
+                        .alias("depenses_euros")
+                    )
+                    .sort(["mois", "categorie"])
+                )
+
+                monthly_summary = (df.with_columns(
+                        pl.col("date_valeur")
+                        .str.to_date("%Y-%m-%d")
+                        .alias("date_valeur")
+                    ).with_columns(
+                        pl.col("date_valeur").dt.truncate("1mo").alias("mois")
+                    )
+                    .group_by("mois")
+                    .agg([
+                        (pl.col("debit_cents").fill_null(0).sum() / 100)
+                        .alias("depenses"),
+
+                        (pl.col("credit_cents").fill_null(0).sum() / 100)
+                        .alias("revenus")
+                    ])
+                    .sort("mois")
+                )
+
+                kpis = monthly_summary.select([
+                    pl.col("depenses").sum().alias("total_expenses"),
+                    pl.col("revenus").sum().alias("total_income"),
+                    pl.col("depenses").mean().alias("average_expenses")
+                ]).row(0, named=True)
+
+                total_expenses = kpis["total_expenses"] or 0
+                total_income = kpis["total_income"] or 0
+
+                balance = total_income - total_expenses
+                average_expenses = kpis["average_expenses"] or 0
+
+                st.subheader("Indicateurs clés df")
+
+                col1, col2, col3, col4 = st.columns(4)
+
+                col1.metric("Dépenses totales", f"{total_expenses:,.2f} €")
+                col2.metric("Revenus totaux", f"{total_income:,.2f} €")
+                col3.metric("Solde net", f"{balance:,.2f} €")
+                col4.metric("Dépenses moyennes / mois", f"{average_expenses:,.2f} €")
 
 
-monthly_expenses = AnalyticsRepository.get_monthly_expenses_by_category()
-monthly_summary = AnalyticsRepository.get_monthly_summary()
+                def monthly_expenses_chart(df):
+                    fig = px.line(
+                        df.to_pandas(),
+                        x="mois",
+                        y="depenses",
+                        markers=True,
+                        title="Évolution des dépenses mensuelles"
+                    )
 
-st.write(monthly_summary)
-kpis = monthly_summary.select(
-    pl.col("depenses").sum().alias("total_expenses"),
-    pl.col("revenus").sum().alias("total_income"),
-    pl.col("depenses").mean().alias("average_expenses")
-).row(0, named=True)
+                    fig.update_layout(
+                        yaxis_title="Dépenses (€)",
+                        xaxis_title="Mois",
+                        template="plotly_white"
+                    )
 
-
-total_expenses = kpis["total_expenses"]
-total_income = kpis["total_income"]
-balance = total_income - total_expenses
-average_expenses = kpis["average_expenses"]
-
-st.subheader("Indicateurs clés")
-
-col1, col2, col3, col4 = st.columns(4)
+                    return fig
 
 
-col1.metric(
-    "Dépenses totales",
-    f"{total_expenses:,.2f} €"
-)
 
-col2.metric(
-    "Revenus totaux",
-    f"{total_income:,.2f} €"
-)
+                def monthly_category_chart(df):
+                    fig = px.bar(
+                        df.to_pandas(),
+                        x="mois",
+                        y="depenses_euros",
+                        color="categorie",
+                        title="Dépenses mensuelles par catégorie",
+                        barmode="stack"
+                    )
 
-col3.metric(
-    "Solde net",
-    f"{balance:,.2f} €"
-)
+                    return fig
 
-col4.metric(
-    "Dépenses moyennes / mois",
-    f"{average_expenses:,.2f} €"
-)
 
-st.divider()
+                def income_vs_expenses_chart(df):
+                    fig = px.bar(
+                        df.to_pandas(),
+                        x="mois",
+                        y=["revenus", "depenses"],
+                        barmode="group",
+                        title="Comparaison revenus / dépenses"
+                    )
+
+                    return fig
+
+                st.plotly_chart(
+                    monthly_expenses_chart(monthly_summary),
+                    width="stretch"
+                )
+
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    st.subheader("Analyse détaillée")
+
+                    st.plotly_chart(
+                        monthly_category_chart(monthly_expenses),
+                        width="stretch"
+                    )
+
+                with col2:
+                    st.subheader("Revenus vs dépenses")
+
+                    st.plotly_chart(
+                        income_vs_expenses_chart(monthly_summary),
+                        width="stretch"
+                    )
