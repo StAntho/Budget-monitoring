@@ -61,9 +61,11 @@ if uploaded_files:
         timeout=600.0
     )
 
-    response.raise_for_status()
+    # response.raise_for_status()
+    st.write(response)
     
     data = response.json()
+    st.write(data)
 
     if data["status"] == "already_imported":
         st.error(f"API error {data["status"]}")

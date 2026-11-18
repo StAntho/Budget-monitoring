@@ -209,9 +209,12 @@ class ExtracterService:
 
         service = SearchService(self.qdrant)
         queries = final_df.to_series(2).to_list()
-        result = [ service.request_vs_r1( 
-            payload={ "query": re.sub(r'^CARTE\s+\d{2}/\d{2}\s*', '', query).strip(), "collection": "test_embedding", } 
+        result = [ service.request_dense_metadata( 
+            payload={ "query": re.sub(r'^CARTE\s+\d{2}/\d{2}\s*', '', query).strip(), "collection": "test_embedding", "metadata_filters": {"qui": name}, "limit": 1} 
             ) for query in queries ]
+        # result = [ service.request_vs_r1( 
+        #     payload={ "query": re.sub(r'^CARTE\s+\d{2}/\d{2}\s*', '', query).strip(), "collection": "test_embedding", } 
+        #     ) for query in queries ]
         normalized_results = [ item if isinstance(item, dict) else { "sous_cat": None, "categorie": None, "sub_cat": None, "finalite":None } for item in result ]
 
         categories_df = pl.DataFrame( 

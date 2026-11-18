@@ -83,26 +83,38 @@ class SearchService:
         query = payload.get("query")
 
         if not isinstance(query, str) or not query.strip():
-            return []
+            return {
+                "sous_cat": None,
+                "categorie": None,
+                "sub_cat": None,
+                "finalite": None
+            }
 
         results = self.qdrant.dense_metadata_search(
             collection=payload["collection"],
             query=query,
-            metadata_query=payload["metadata_query"],
+            metadata_query=payload.get("metadata_query"),
             metadata_filters=payload.get("metadata_filters"),
             query_weight=payload.get("query_weight", 0.8),
             metadata_weight=payload.get("metadata_weight", 0.2),
-            limit=payload.get("limit", 5)
+            limit=payload.get("limit", 1)
         )
 
-        return [
-            {
-                "id": str(r["id"]),
-                "score": r["score"],
-                "query_score": r["query_score"],
-                "metadata_score": r["metadata_score"],
-                "content": r["payload"].get("page_content"),
-                "metadata": r["payload"].get("metadata", {})
+        if not results:
+            return {
+                "sous_cat": None,
+                "categorie": None,
+                "sub_cat": None,
+                "finalite": None
             }
-            for r in results
-        ]
+
+        point = results[0]
+
+        metadata = point.payload.get("metadata", {})
+
+        return {
+            "sous_cat": metadata.get("sous_cat"),
+            "categorie": metadata.get("categorie"),
+            "sub_cat": metadata.get("sub_cat"),
+            "finalite": metadata.get("finalite")
+        }

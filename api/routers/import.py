@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Body, Depends
 from services.importer import ImporterService
+from services.search_service import SearchService
 from dependencies.rag import get_qdrant
 from core.vector_store import Qdrant_vs
 
@@ -15,7 +16,7 @@ def process(
 
 @router.get('/get_datas_vs')
 def get_datas_vs(qdrant: Qdrant_vs = Depends(get_qdrant)):
-    service = ImporterService(qdrant)
+    service = SearchService(qdrant)
     return service.get_datas()
 
 @router.post('/request_vs')
@@ -23,5 +24,5 @@ def request_vs(
     payload: dict = Body(...),               
     qdrant: Qdrant_vs = Depends(get_qdrant),
 ):
-    service = ImporterService(qdrant)
+    service = SearchService(qdrant)
     return service.request_vs(payload)
