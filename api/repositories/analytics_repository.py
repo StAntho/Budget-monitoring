@@ -3,6 +3,66 @@ import polars as pl
 
 class AnalyticsRepository:
 
+    @staticmethod
+    def get_data_connection():
+
+        with get_connection() as connect:
+
+            table = connect.execute("""
+                SELECT COUNT(*)
+                FROM information_schema.tables
+                WHERE table_name = 'transactions'
+            """).fetchone()[0]
+
+            if not table:
+                return {
+                    "total": 0,
+                    "dates_valides": 0,
+                    "debits": 0,
+                    "credits": 0,
+                    "categories": 0,
+                    "personnes": 0
+                }
+
+            result = connect.execute("""
+                SELECT
+                    COUNT(*) AS total,
+                    COUNT(date_valeur) AS dates_valides,
+                    COUNT(debit_cents) AS debits,
+                    COUNT(credit_cents) AS credits,
+                    COUNT(categorie) AS categories,
+                    COUNT(who) AS personnes
+                FROM transactions
+            """).fetchone()
+
+            return {
+                "total": result[0],
+                "dates_valides": result[1],
+                "debits": result[2],
+                "credits": result[3],
+                "categories": result[4],
+                "personnes": result[5]
+            }
+
+    @staticmethod
+    def get_all_transactions() -> pl.DataFrame:
+        connection = AnalyticsRepository.get_data_connection()
+
+        query = """
+            SELECT
+                date_valeur AS date,
+                who,
+                categorie,
+                debit_cents AS debit,
+                credit_cents AS credit,
+            FROM transactions
+        """
+
+        return pl.read_database(
+            query=query,
+            connection=connection["connection"]
+        )
+
     def get_monthly_expenses_by_category():
         with get_connection() as conect:
             result = conect.execute("""
