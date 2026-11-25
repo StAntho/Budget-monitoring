@@ -65,3 +65,79 @@ def render_income_vs_expenses(df: pl.DataFrame):
         fig,
         use_container_width=True
     )
+
+
+def render_expenses_by_category(df: pl.DataFrame):
+    data = (
+        df.filter(pl.col("type") == "Dépense")
+        .group_by("categorie")
+        .agg(
+            pl.col("montant_euros").sum().alias("depenses")
+        )
+        .sort("depenses", descending=True)
+    )
+
+    fig = px.pie(
+        data,
+        names="categorie",
+        values="depenses",
+        hole=0.5,
+        title="Répartition des dépenses par catégorie"
+    )
+
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
+
+
+def render_monthly_category(df: pl.DataFrame):
+    data = (
+        df.filter(pl.col("type") == "Dépense")
+        .group_by([
+            pl.col("date_valeur").dt.truncate("1mo").alias("mois"),
+            "categorie"
+        ])
+        .agg(
+            pl.col("montant_euros").sum().alias("depenses")
+        )
+        .sort("mois")
+    )
+
+    fig = px.bar(
+        data,
+        x="mois",
+        y="depenses",
+        color="categorie",
+        barmode="stack",
+        title="Dépenses mensuelles par catégorie"
+    )
+
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
+
+
+def render_expenses_by_person(df: pl.DataFrame):
+    data = (
+        df.filter(pl.col("type") == "Dépense")
+        .group_by("personne")
+        .agg(
+            pl.col("montant_euros").sum().alias("depenses")
+        )
+        .sort("depenses", descending=True)
+    )
+
+    fig = px.bar(
+        data,
+        x="personne",
+        y="depenses",
+        color="personne",
+        title="Dépenses par personne"
+    )
+
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
