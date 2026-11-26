@@ -141,3 +141,28 @@ def render_expenses_by_person(df: pl.DataFrame):
         fig,
         use_container_width=True
     )
+
+
+def render_person_category_heatmap(df: pl.DataFrame):
+    data = (
+        df.filter(pl.col("type") == "Dépense")
+        .group_by(["personne", "categorie"])
+        .agg(
+            pl.col("montant_euros").sum().alias("depenses")
+        )
+    )
+
+    fig = px.density_heatmap(
+        data,
+        x="categorie",
+        y="personne",
+        z="depenses",
+        histfunc="sum",
+        color_continuous_scale="Blues",
+        title="Répartition des dépenses par personne et catégorie"
+    )
+
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
