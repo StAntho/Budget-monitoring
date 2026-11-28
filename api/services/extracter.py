@@ -12,6 +12,7 @@ from parsers.registry import ParserRegistry
 from repositories.transactions_repository import TransactionRepository
 from dotenv import load_dotenv
 from services import search_service
+from utils.pdf_debugger import debug_pdf_words
 
 load_dotenv()
 
@@ -141,6 +142,9 @@ class ExtracterService:
                 pdf_bytes=pdf_bytes,
                 filename=filename,
             )
+
+            if os.getenv("DEBUG_PDF", "false").lower() == "true":
+                debug_pdf_words(document, page_number=1)
 
             parser = self.registry.select(document)
 
